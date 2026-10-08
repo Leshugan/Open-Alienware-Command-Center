@@ -1,0 +1,26 @@
+[package]
+name = "AlienCenter"
+version = "0.1.0"
+edition = "2021"
+description = "Лёгкая замена Alienware Command Center для Alienware m18 R2"
+
+[[bin]]
+name = "AlienCenter"
+path = "src/main.rs"
+
+[dependencies]
+eframe = { version = "=0.31.1", default-features = false, features = ["default_fonts", "glow"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ab_glyph = "0.2"
+rusqlite = { version = "0.32", features = ["bundled"] }
+windows = { version = "0.58", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Com", "Win32_System_Wmi", "Win32_System_Variant", "Win32_System_Rpc"] }
+
+[build-dependencies]
+embed-resource = "2.5"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

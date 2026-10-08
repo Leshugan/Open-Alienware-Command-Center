@@ -1,0 +1,6 @@
+/target
+*.exe
+*.json
+build.log
+/research
+app.manifest
