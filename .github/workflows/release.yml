@@ -1,0 +1,31 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Собрать exe
+        shell: pwsh
+        env:
+          RUSTFLAGS: -C target-feature=+crt-static
+        run: |
+          $env:PATH = "C:\mingw64\bin;" + $env:PATH
+          cargo build --release
+          Copy-Item target\release\AlienCenter.exe "Open Alienware Command Center.exe"
+
+      - name: Выложить релиз
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Open Alienware Command Center ${{ github.ref_name }}
+          files: Open Alienware Command Center.exe
