@@ -19,8 +19,14 @@ jobs:
         env:
           RUSTFLAGS: -C target-feature=+crt-static
         run: |
-          $env:PATH = "C:\mingw64\bin;" + $env:PATH
-          cargo build --release
+          $env:PATH = "C:\mingw64\bin;C:\msys64\mingw64\bin;" + $env:PATH
+          rustup toolchain install stable-x86_64-pc-windows-gnu --profile minimal 2>&1 | Out-Host
+          $out = cargo build --release 2>&1 | Out-String
+          Write-Host $out
+          if ($LASTEXITCODE -ne 0) {
+            $out -split "`n" | Select-Object -Last 25 | ForEach-Object { Write-Host "::error::$_" }
+            exit 1
+          }
           Copy-Item target\release\AlienCenter.exe "Open Alienware Command Center.exe"
 
       - name: Выложить релиз
