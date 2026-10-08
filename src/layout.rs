@@ -100,7 +100,7 @@ pub fn all_ids() -> Vec<u8> {
 pub fn label(id: u8) -> String {
     for k in keys() {
         if k.id == id {
-            return match k.label { "" => "Пробел".into(), "MIC" => "Микрофон".into(), "🔇" => "Без звука".into(), "🔉" => "Тише".into(), "🔊" => "Громче".into(), l => l.to_string() };
+            return match k.label { "" => crate::i18n::t("Пробел").into(), "MIC" => crate::i18n::t("Микрофон").into(), "🔇" => crate::i18n::t("Без звука").into(), "🔉" => crate::i18n::t("Тише").into(), "🔊" => crate::i18n::t("Громче").into(), l => l.to_string() };
         }
     }
     format!("#{id}")

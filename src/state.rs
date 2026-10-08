@@ -61,6 +61,9 @@ pub struct State {
     /// отладочная запись на рабочий стол
     #[serde(default)]
     pub debug: bool,
+    /// язык интерфейса (пусто — как в Windows)
+    #[serde(default)]
+    pub lang: Option<u8>,
     pub schemes: Vec<Scheme>,
 }
 
@@ -81,6 +84,7 @@ impl Default for State {
             tray: true,
             numpad_off: Vec::new(),
             debug: false,
+            lang: None,
             schemes: Vec::new(),
         }
     }

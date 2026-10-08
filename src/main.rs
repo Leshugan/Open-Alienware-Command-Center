@@ -5,6 +5,7 @@ mod chassis;
 mod glyphs;
 mod hid;
 mod hook;
+mod i18n;
 mod icons_data;
 mod ipc;
 mod keyboard;

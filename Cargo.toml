@@ -1,6 +1,6 @@
 [package]
 name = "AlienCenter"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Лёгкая замена Alienware Command Center для Alienware m18 R2"
 

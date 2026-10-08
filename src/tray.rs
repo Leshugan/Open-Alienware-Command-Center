@@ -1,6 +1,7 @@
 //! Значок батареи в трее: заряд в процентах, цвет по уровню, молния при питании от сети.
 //! Левый клик — режим «Батарея» / обратно «Баланс» (с всплывающим подтверждением).
 //! Правый клик — своё тёмное меню со всеми режимами.
+use crate::i18n::{t, tf};
 use crate::log;
 use crate::power::{Cmd, Sensors};
 use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering};
@@ -555,7 +556,7 @@ fn refresh(hwnd: isize, force: bool) {
     d.flags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
     let icon = make_icon(pct, ac, m == Some(0));
     d.icon = icon;
-    let tip = format!("Заряд {pct}% · {} · режим «{}»", if ac { "от сети" } else { "от батареи" }, m.map(|m| SHORT[m as usize]).unwrap_or("—"));
+    let tip = tf("Заряд {}% · {} · режим «{}»", &[&pct, &t(if ac { "от сети" } else { "от батареи" }), &m.map(|m| t(SHORT[m as usize])).unwrap_or("—")]);
     for (i, ch) in tip.encode_utf16().take(127).enumerate() {
         d.tip[i] = ch;
     }
@@ -621,11 +622,11 @@ fn menu_image(hover: Option<usize>, rows: &mut Vec<(f32, f32, usize)>) -> Canvas
     let (pct, ac, life) = power();
     let cur = mode();
     let (Some(semi), Some(reg)) = (font_semi(), font_reg()) else { return c };
-    c.text(semi, &format!("Заряд {pct}% · {}", if ac { "от сети" } else { "от батареи" }), 14.0 * s, 18.0 * s, 24.0 * s, TEXT);
+    c.text(semi, &tf("Заряд {}% · {}", &[&pct, &t(if ac { "от сети" } else { "от батареи" })]), 14.0 * s, 18.0 * s, 24.0 * s, TEXT);
     let sub = match life {
-        Some(sec) => format!("Хватит примерно на {} ч {} мин", sec / 3600, sec % 3600 / 60),
-        None if ac => "Питание подключено".to_string(),
-        None => "Оцениваю время работы…".to_string(),
+        Some(sec) => tf("Хватит примерно на {} ч {} мин", &[&(sec / 3600), &(sec % 3600 / 60)]),
+        None if ac => t("Питание подключено").to_string(),
+        None => t("Оцениваю время работы…").to_string(),
     };
     c.text(reg, &sub, 12.0 * s, 18.0 * s, 44.0 * s, DIM);
     let mut y = 60.0 * s;
@@ -642,20 +643,20 @@ fn menu_image(hover: Option<usize>, rows: &mut Vec<(f32, f32, usize)>) -> Canvas
         }
         let col = if on { ACC } else if hov { TEXT } else { DIM };
         mode_icon(&mut c, i, 36.0 * s, (y0 + y1) / 2.0, 0.85 * s, col, bg);
-        c.text(semi, SHORT[i], 14.5 * s, 64.0 * s, y0 + 16.0 * s, if on || hov { TEXT } else { rgba(205, 210, 218, 1.0) });
-        c.text(reg, DESC[i], 11.5 * s, 64.0 * s, y0 + 35.0 * s, DIM);
+        c.text(semi, t(SHORT[i]), 14.5 * s, 64.0 * s, y0 + 16.0 * s, if on || hov { TEXT } else { rgba(205, 210, 218, 1.0) });
+        c.text(reg, t(DESC[i]), 11.5 * s, 64.0 * s, y0 + 35.0 * s, DIM);
         if on {
             let (bx0, bx1) = (wd - 82.0 * s, wd - 20.0 * s);
             let cy = (y0 + y1) / 2.0;
             c.rrect(bx0, cy - 10.0 * s, bx1, cy + 10.0 * s, 10.0 * s, 0.0, rgba(20, 70, 85, 1.0));
-            c.text_center(reg, "сейчас", 11.5 * s, (bx0 + bx1) / 2.0, cy, ACC);
+            c.text_center(reg, t("сейчас"), 11.5 * s, (bx0 + bx1) / 2.0, cy, ACC);
         }
         rows.push((y0, y1, i));
         y += ih;
     }
     c.rrect(16.0 * s, y + 4.0 * s, wd - 16.0 * s, y + 5.0 * s, 0.0, 0.0, LINE);
     y += 12.0 * s;
-    for (n, act) in [("Открыть программу", 10usize), ("Выход", 11)] {
+    for (n, act) in [(t("Открыть программу"), 10usize), (t("Выход"), 11)] {
         let (y0, y1) = (y, y + 36.0 * s);
         if hover == Some(act) {
             c.rrect(8.0 * s, y0, wd - 8.0 * s, y1, 8.0 * s, 0.0, rgba(32, 36, 45, 1.0));
@@ -860,6 +861,14 @@ pub fn start(ptx: Sender<Cmd>, sensors: Arc<Mutex<Sensors>>) {
 }
 
 /// Сразу обновить значок (после смены режима или переключателя показа).
+/// Сменился язык — перерисовать подсказку значка.
+pub fn relang() {
+    if let Ok(mut sh) = SHOWN.lock() {
+        sh.mode = Some(250);
+    }
+    poke();
+}
+
 pub fn poke() {
     let h = HWND_TRAY.load(Ordering::Relaxed);
     if h != 0 {

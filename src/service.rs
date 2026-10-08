@@ -54,6 +54,10 @@ pub fn dispatch(m: Msg) {
             crate::tray::poke();
         }
         Msg::Debug(on) => log::set(on),
+        Msg::Lang(l) => {
+            crate::i18n::set(l);
+            crate::tray::relang();
+        }
         Msg::Press(id) => crate::reactive::press(id),
         Msg::Quit => quit(),
     }
@@ -113,6 +117,7 @@ pub fn run() -> ! {
     }
     let st = State::load();
     log::set(st.debug);
+    crate::i18n::init(st.lang);
     log::write("Фон: запуск");
     let (kb, status) = crate::worker::start(None);
     let (pw, sensors) = crate::power::start();

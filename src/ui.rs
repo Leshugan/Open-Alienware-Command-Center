@@ -1,6 +1,7 @@
 //! Окно программы.
 use crate::keyboard::{Rgb, KEYS};
 use crate::glyphs;
+use crate::i18n::t;
 use crate::layout;
 use crate::state::{self, Scheme, State};
 use crate::worker::{Cmd, Status};
@@ -69,6 +70,7 @@ impl App {
         setup_style(&cc.egui_ctx);
         let st = State::load();
         crate::log::quiet(st.debug);
+        crate::i18n::init(st.lang);
         let keys = st.key_colors();
         let mut pad_off = [None; KEYS];
         for (id, h) in &st.numpad_off {
@@ -413,7 +415,7 @@ impl App {
     fn tabs(&mut self, ui: &mut egui::Ui) {
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 6.0;
-            for (i, n) in ["Подсветка", "Производительность", "Настройки"].iter().enumerate() {
+            for (i, n) in [t("Подсветка"), t("Производительность"), t("Настройки")].iter().enumerate() {
                 let i = i as u8;
                 let on = self.tab == i;
                 let ready = true;
@@ -432,7 +434,7 @@ impl App {
                     self.st.save();
                 }
                 if !ready {
-                    resp.on_hover_text("Скоро");
+                    resp.on_hover_text(t("Скоро"));
                 }
             }
         });
@@ -445,19 +447,19 @@ impl App {
         }
         // (код, название, описание, мощность 1..5, шум 1..5)
         let modes: [(u8, &str, &str, u8, u8); 5] = [
-            (0, "Энергосбережение", "Дольше без зарядки. Мощность и шум — минимум.", 1, 1),
-            (1, "Тихий", "Почти не слышно. Браузер, кино, работа.", 2, 1),
-            (2, "Баланс", "Обычный режим на каждый день.", 3, 3),
-            (3, "Производительность", "Больше мощности для игр. Вентиляторы громче.", 4, 4),
-            (4, "Максимум", "Вся мощность. Вентиляторы на полную.", 5, 5),
+            (0, t("Энергосбережение"), t("Дольше без зарядки. Мощность и шум — минимум."), 1, 1),
+            (1, t("Тихий"), t("Почти не слышно. Браузер, кино, работа."), 2, 1),
+            (2, t("Баланс"), t("Обычный режим на каждый день."), 3, 3),
+            (3, t("Производительность"), t("Больше мощности для игр. Вентиляторы громче."), 4, 4),
+            (4, t("Максимум"), t("Вся мощность. Вентиляторы на полную."), 5, 5),
         ];
         // режимы — пять компактных карточек с описанием и шкалами
         card_fit(ui, |ui| {
             ui.horizontal(|ui| {
-                ui.label(egui::RichText::new("Режим").size(17.0).strong().color(TEXT));
+                ui.label(egui::RichText::new(t("Режим")).size(17.0).strong().color(TEXT));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     let mut on = self.st.tray;
-                    if ui.checkbox(&mut on, "Значок батареи в трее").on_hover_text("Левый клик по значку — «Энергосбережение» и обратно «Баланс» (в этом режиме на значке листик). Правый — все режимы. Крестик закрывает окно, а программа продолжает работать в трее.").changed() {
+                    if ui.checkbox(&mut on, t("Значок батареи в трее")).on_hover_text(t("Левый клик по значку — «Энергосбережение» и обратно «Баланс» (в этом режиме на значке листик). Правый — все режимы. Крестик закрывает окно, а программа продолжает работать в трее.")).changed() {
                         self.st.tray = on;
                         self.st.save();
                         let _ = crate::ipc::send(&crate::ipc::Msg::Tray(on));
@@ -480,7 +482,7 @@ impl App {
                     p.text(r.left_top() + vec2(44.0, 24.0), Align2::LEFT_CENTER, name, FontId::proportional(14.5), if on { TEXT } else { Color32::from_rgb(200, 205, 214) });
                     let g = p.layout(desc.to_string(), FontId::proportional(11.5), DIM, w - 28.0);
                     p.galley(r.left_top() + vec2(14.0, 44.0), g, DIM);
-                    for (row, (label, v)) in [("Мощность", pw), ("Шум", noise)].iter().enumerate() {
+                    for (row, (label, v)) in [(t("Мощность"), pw), (t("Шум"), noise)].iter().enumerate() {
                         let y = r.bottom() - 34.0 + row as f32 * 18.0;
                         p.text(pos2(r.left() + 14.0, y), Align2::LEFT_CENTER, *label, FontId::proportional(11.0), DIM);
                         for i in 0..5u8 {
@@ -499,7 +501,7 @@ impl App {
             });
             if !sn.ok {
                 ui.add_space(6.0);
-                ui.label(egui::RichText::new("Нет связи с ноутбуком: программе нужны права администратора.").size(12.0).color(Color32::from_rgb(255, 120, 100)));
+                ui.label(egui::RichText::new(t("Нет связи с ноутбуком: программе нужны права администратора.")).size(12.0).color(Color32::from_rgb(255, 120, 100)));
             }
         });
         ui.add_space(14.0);
@@ -508,12 +510,12 @@ impl App {
         let orange = Color32::from_rgb(255, 140, 60);
         let green = Color32::from_rgb(120, 220, 90);
         let mut tiles: Vec<(String, String, String, f32, Color32)> = vec![
-            ("Процессор".into(), opt(sn.cpu_temp, "°"), sn.cpu_load.map(|l| format!("нагрузка {l:.0}%")).unwrap_or_default(), sn.cpu_temp.unwrap_or(0) as f32 / 100.0, orange),
-            ("Видеокарта".into(), opt(sn.gpu_temp, "°"), sn.gpu_load.map(|l| format!("нагрузка {l}%")).unwrap_or_default(), sn.gpu_temp.unwrap_or(0) as f32 / 100.0, green),
+            (t("Процессор").to_string(), opt(sn.cpu_temp, "°"), sn.cpu_load.map(|l| crate::i18n::tf("нагрузка {}%", &[&format!("{l:.0}")])).unwrap_or_default(), sn.cpu_temp.unwrap_or(0) as f32 / 100.0, orange),
+            (t("Видеокарта").to_string(), opt(sn.gpu_temp, "°"), sn.gpu_load.map(|l| crate::i18n::tf("нагрузка {}%", &[&l])).unwrap_or_default(), sn.gpu_temp.unwrap_or(0) as f32 / 100.0, green),
         ];
         for (i, (rpm, max)) in sn.fans.iter().enumerate() {
-            let small = if *rpm == 0 { "об/мин · стоит".to_string() } else { "об/мин".to_string() };
-            tiles.push((format!("Вентилятор {}", i + 1), rpm.to_string(), small, *rpm as f32 / (*max).max(1) as f32, ACC));
+            let small = if *rpm == 0 { t("об/мин · стоит").to_string() } else { t("об/мин").to_string() };
+            tiles.push((crate::i18n::tf("Вентилятор {}", &[&(i + 1)]), rpm.to_string(), small, *rpm as f32 / (*max).max(1) as f32, ACC));
         }
         let gap = 14.0;
         let n = tiles.len() as f32;
@@ -536,10 +538,10 @@ impl App {
         ui.add_space(14.0);
         card(ui, |ui| {
             ui.horizontal(|ui| {
-                ui.label(egui::RichText::new("Температура за 2 минуты").size(15.0).strong().color(TEXT));
+                ui.label(egui::RichText::new(t("Температура за 2 минуты")).size(15.0).strong().color(TEXT));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.label(egui::RichText::new("● видеокарта").size(12.0).color(Color32::from_rgb(120, 220, 90)));
-                    ui.label(egui::RichText::new("● процессор").size(12.0).color(Color32::from_rgb(255, 140, 60)));
+                    ui.label(egui::RichText::new(t("● видеокарта")).size(12.0).color(Color32::from_rgb(120, 220, 90)));
+                    ui.label(egui::RichText::new(t("● процессор")).size(12.0).color(Color32::from_rgb(255, 140, 60)));
                 });
             });
             ui.add_space(6.0);
@@ -562,7 +564,7 @@ impl App {
                 }
             }
             if sn.history.len() < 2 {
-                p.text(r.center(), Align2::CENTER_CENTER, "собираю данные…", FontId::proportional(13.0), DIM);
+                p.text(r.center(), Align2::CENTER_CENTER, t("собираю данные…"), FontId::proportional(13.0), DIM);
             }
         });
     }
@@ -573,13 +575,13 @@ impl App {
     fn autostart_note(&mut self, ui: &mut egui::Ui, why: &str) {
         let on = crate::autostart::is_on();
         if on == Some(true) {
-            ui.label(egui::RichText::new(format!("{why} Автозапуск включён — работает всегда.")).size(11.5).color(Color32::from_rgb(120, 220, 140)));
+            ui.label(egui::RichText::new(crate::i18n::tf("{} Автозапуск включён — работает всегда.", &[&why])).size(11.5).color(Color32::from_rgb(120, 220, 140)));
             return;
         }
         egui::Frame::default().fill(Color32::from_rgb(48, 38, 20)).stroke(Stroke::new(1.0_f32, Color32::from_rgb(120, 90, 30))).corner_radius(CornerRadius::same(8)).inner_margin(egui::Margin::symmetric(10, 8)).show(ui, |ui| {
             ui.set_width(ui.available_width());
-            ui.label(egui::RichText::new(format!("{why} Работает, только пока программа запущена — после перезагрузки сам не включится.")).size(11.5).color(Color32::from_rgb(240, 200, 120)));
-            if ui.button("Включить автозапуск").clicked() {
+            ui.label(egui::RichText::new(crate::i18n::tf("{} Работает, только пока программа запущена — после перезагрузки сам не включится.", &[&why])).size(11.5).color(Color32::from_rgb(240, 200, 120)));
+            if ui.button(t("Включить автозапуск")).clicked() {
                 crate::autostart::set(true);
             }
         });
@@ -587,12 +589,29 @@ impl App {
 
     fn settings_page(&mut self, ui: &mut egui::Ui) {
         card_fit(ui, |ui| {
-            ui.label(egui::RichText::new("Автозапуск").size(17.0).strong().color(TEXT));
+            ui.label(egui::RichText::new(t("Язык")).size(17.0).strong().color(TEXT));
+            ui.add_space(8.0);
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = 8.0;
+                let cur = crate::i18n::get();
+                for (i, n) in crate::i18n::NAMES.iter().enumerate() {
+                    if chip(ui, n, if cur == i as u8 { ACC } else { LINE }, cur == i as u8).clicked() && cur != i as u8 {
+                        crate::i18n::set(i as u8);
+                        self.st.lang = Some(i as u8);
+                        self.st.save();
+                        let _ = crate::ipc::send(&crate::ipc::Msg::Lang(i as u8));
+                    }
+                }
+            });
+        });
+        ui.add_space(14.0);
+        card_fit(ui, |ui| {
+            ui.label(egui::RichText::new(t("Автозапуск")).size(17.0).strong().color(TEXT));
             ui.add_space(6.0);
             let state = crate::autostart::is_on();
             let mut on = state.unwrap_or(false);
             ui.add_enabled_ui(state.is_some(), |ui| {
-                if ui.checkbox(&mut on, egui::RichText::new("Запускать вместе с Windows — тихо, в фоне").size(14.0)).changed() {
+                if ui.checkbox(&mut on, egui::RichText::new(t("Запускать вместе с Windows — тихо, в фоне")).size(14.0)).changed() {
                     crate::autostart::set(on);
                 }
             });
@@ -600,40 +619,40 @@ impl App {
             let p = |ui: &mut egui::Ui, t: &str, c: Color32| {
                 ui.label(egui::RichText::new(t).size(12.5).color(c));
             };
-            p(ui, "Зачем это нужно. Свои цвета, обычные эффекты (дыхание, спектр, волна, сканер) и режим питания хранятся в самом ноутбуке — они работают и без программы, даже если её удалить.", DIM);
+            p(ui, t("Зачем это нужно. Свои цвета, обычные эффекты (дыхание, спектр, волна, сканер) и режим питания хранятся в самом ноутбуке — они работают и без программы, даже если её удалить."), DIM);
             ui.add_space(4.0);
-            p(ui, "А вот это делает сама программа, и работает оно, только пока она запущена:", DIM);
+            p(ui, t("А вот это делает сама программа, и работает оно, только пока она запущена:"), DIM);
             for t in [
-                "•  эффекты «На нажатия» (круг, крест, брызги, тепловая карта…);",
-                "•  Fn-выключение подсветки гасит заодно эмблему, контур и кнопку питания;",
-                "•  поменянные местами функции HOME / END / DEL (правый клик по клавише);",
-                "•  значок батареи в трее и переключение режимов из него.",
+                t("•  эффекты «На нажатия» (круг, крест, брызги, тепловая карта…);"),
+                t("•  Fn-выключение подсветки гасит заодно эмблему, контур и кнопку питания;"),
+                t("•  поменянные местами функции HOME / END / DEL (правый клик по клавише);"),
+                t("•  значок батареи в трее и переключение режимов из него."),
             ] {
                 p(ui, t, Color32::from_rgb(205, 210, 218));
             }
             ui.add_space(4.0);
-            p(ui, "С автозапуском программа сама стартует при входе в Windows, окно не открывается. Если значок в трее выключен, она просто тихо работает в фоне — чтобы открыть окно, запусти программу ещё раз.", DIM);
+            p(ui, t("С автозапуском программа сама стартует при входе в Windows, окно не открывается. Если значок в трее выключен, она просто тихо работает в фоне — чтобы открыть окно, запусти программу ещё раз."), DIM);
         });
         ui.add_space(14.0);
         card_fit(ui, |ui| {
-            ui.label(egui::RichText::new("Отладка").size(17.0).strong().color(TEXT));
+            ui.label(egui::RichText::new(t("Отладка")).size(17.0).strong().color(TEXT));
             ui.add_space(6.0);
             let mut on = self.st.debug;
-            if ui.checkbox(&mut on, egui::RichText::new("Записывать отладку в файл на рабочем столе").size(14.0)).changed() {
+            if ui.checkbox(&mut on, egui::RichText::new(t("Записывать отладку в файл на рабочем столе")).size(14.0)).changed() {
                 self.st.debug = on;
                 self.st.save();
                 crate::log::quiet(on);
                 let _ = crate::ipc::send(&crate::ipc::Msg::Debug(on));
             }
             ui.add_space(4.0);
-            ui.label(egui::RichText::new("Нужна, только если что-то работает не так: файл «Open Alienware Command Center_debug.txt» покажет, где проблема.").size(12.5).color(DIM));
+            ui.label(egui::RichText::new(t("Нужна, только если что-то работает не так: файл «Open Alienware Command Center_debug.txt» покажет, где проблема.")).size(12.5).color(DIM));
         });
         ui.add_space(14.0);
         card_fit(ui, |ui| {
-            ui.label(egui::RichText::new("О программе").size(17.0).strong().color(TEXT));
+            ui.label(egui::RichText::new(t("О программе")).size(17.0).strong().color(TEXT));
             ui.add_space(6.0);
             ui.label(egui::RichText::new(format!("Open Alienware Command Center {}", env!("CARGO_PKG_VERSION"))).size(13.5).color(TEXT));
-            ui.label(egui::RichText::new("Лёгкая замена Alienware Command Center без телеметрии и лишних служб.").size(12.5).color(DIM));
+            ui.label(egui::RichText::new(t("Лёгкая замена Alienware Command Center без телеметрии и лишних служб.")).size(12.5).color(DIM));
         });
     }
 }
@@ -706,17 +725,17 @@ impl App {
     fn left_panel(&mut self, ui: &mut egui::Ui) {
         card(ui, |ui| {
             ui.horizontal(|ui| {
-                ui.label(egui::RichText::new("Подсветка").size(17.0).strong().color(TEXT));
+                ui.label(egui::RichText::new(t("Подсветка")).size(17.0).strong().color(TEXT));
                 ui.add_space(10.0);
-                ui.label(egui::RichText::new("нажми на клавишу или зону · Ctrl — несколько · протяни мышью — область · правый клик по HOME, END, DEL — поменять их функции").size(12.5).color(DIM));
+                ui.label(egui::RichText::new(t("нажми на клавишу или зону · Ctrl — несколько · протяни мышью — область · правый клик по HOME, END, DEL — поменять их функции")).size(12.5).color(DIM));
             });
             if self.num_off() {
-                ui.label(egui::RichText::new("Num Lock выключен — цифровой блок красится своим вторым цветом").size(12.0).color(ACC));
+                ui.label(egui::RichText::new(t("Num Lock выключен — цифровой блок красится своим вторым цветом")).size(12.0).color(ACC));
             } else {
-                ui.label(egui::RichText::new("Выключи Num Lock, чтобы задать цифровому блоку второй цвет").size(12.0).color(DIM));
+                ui.label(egui::RichText::new(t("Выключи Num Lock, чтобы задать цифровому блоку второй цвет")).size(12.0).color(DIM));
             }
             if !self.st.swapped.is_empty() && crate::autostart::is_on() != Some(true) {
-                self.autostart_note(ui, "Поменянные местами HOME / END / DEL делает сама программа.");
+                self.autostart_note(ui, t("Поменянные местами HOME / END / DEL делает сама программа."));
             }
             ui.add_space(6.0);
             self.keyboard(ui);
@@ -725,10 +744,10 @@ impl App {
                 self.rear(ui);
                 ui.add_space(20.0);
                 ui.vertical(|ui| {
-                    caption(ui, "Быстрый выбор");
+                    caption(ui, t("Быстрый выбор"));
                     self.chips(ui);
                     ui.add_space(14.0);
-                    caption(ui, "Выбрано");
+                    caption(ui, t("Выбрано"));
                     self.selection_line(ui);
                     ui.add_space((ui.available_height() - 40.0).max(0.0));
                     self.status_line(ui);
@@ -942,7 +961,7 @@ impl App {
         let painter = ui.painter_at(outer);
         painter.rect_filled(outer, CornerRadius::same(10), PANEL2);
         painter.rect_stroke(outer, CornerRadius::same(10), Stroke::new(1.0_f32, LINE), StrokeKind::Inside);
-        painter.text(outer.left_top() + vec2(14.0, 12.0), Align2::LEFT_TOP, "КОРПУС — ВИД СЗАДИ", FontId::proportional(11.0), DIM);
+        painter.text(outer.left_top() + vec2(14.0, 12.0), Align2::LEFT_TOP, t("КОРПУС — ВИД СЗАДИ"), FontId::proportional(11.0), DIM);
         let o = outer.left_top() + vec2(15.0, 36.0);
         let p = |x: f32, y: f32| o + vec2(x, y);
 
@@ -967,7 +986,7 @@ impl App {
             painter.rect_stroke(hb.expand(6.0), CornerRadius::same(8), Stroke::new(2.0_f32, ACC), StrokeKind::Outside);
         }
         painter.line_segment([p(246.0, 46.0), p(296.0, 46.0)], Stroke::new(1.0_f32, Color32::from_rgb(74, 81, 96)));
-        painter.text(p(300.0, 46.0), Align2::LEFT_CENTER, "Эмблема", FontId::proportional(12.0), DIM);
+        painter.text(p(300.0, 46.0), Align2::LEFT_CENTER, t("Эмблема"), FontId::proportional(12.0), DIM);
 
         // световой контур
         let bar = Rect::from_min_max(p(30.0, 155.0), p(410.0, 193.0));
@@ -1000,7 +1019,7 @@ impl App {
         if con_sel {
             painter.rect_stroke(bar.expand(5.0), CornerRadius::same(23), Stroke::new(2.0_f32, ACC), StrokeKind::Outside);
         }
-        painter.text(p(410.0, 214.0), Align2::RIGHT_CENTER, "Световой контур", FontId::proportional(12.0), DIM);
+        painter.text(p(410.0, 214.0), Align2::RIGHT_CENTER, t("Световой контур"), FontId::proportional(12.0), DIM);
 
         // нажатия
         let ctrl = ui.input(|i| i.modifiers.ctrl || i.modifiers.shift);
@@ -1024,14 +1043,14 @@ impl App {
         everything.push(Zone::Emblem);
         everything.push(Zone::Contour);
         let groups: Vec<(&str, Vec<Zone>)> = vec![
-            ("Вся клавиатура", all),
+            (t("Вся клавиатура"), all),
             ("F1–F12", keys(layout::F_KEYS)),
-            ("Цифры", keys(layout::NUMBERS)),
+            (t("Цифры"), keys(layout::NUMBERS)),
             ("QWER", keys(layout::QWER)),
             ("WASD", keys(layout::WASD)),
-            ("Эмблема", vec![Zone::Emblem]),
-            ("Световой контур", vec![Zone::Contour]),
-            ("Всё сразу", everything),
+            (t("Эмблема"), vec![Zone::Emblem]),
+            (t("Световой контур"), vec![Zone::Contour]),
+            (t("Всё сразу"), everything),
         ];
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing = vec2(8.0, 8.0);
@@ -1048,31 +1067,31 @@ impl App {
     fn status_line(&mut self, ui: &mut egui::Ui) {
         let s = self.status.lock().map(|s| s.clone()).unwrap_or_default();
         let dev = if !s.started {
-            "Поиск устройств…".to_string()
+            t("Поиск устройств…").to_string()
         } else {
-            format!(
+            crate::i18n::tf(
                 "Клавиатура: {} · Корпус: {}",
-                if s.keyboard { "подключена" } else { "не найдена" },
-                if s.body { "подключён" } else { "не найден" }
+                &[&t(if s.keyboard { "подключена" } else { "не найдена" }), &t(if s.body { "подключён" } else { "не найден" })],
             )
         };
-        let text = format!("{dev}  ·  {}", LAST_LOG.lock().map(|l| l.clone()).unwrap_or_default());
+        // последнее событие показываем только при включённой отладке
+        let text = if self.st.debug { format!("{dev}  ·  {}", LAST_LOG.lock().map(|l| l.clone()).unwrap_or_default()) } else { dev };
         let r = ui.add(egui::Label::new(egui::RichText::new(&text).size(12.0).color(DIM)).truncate().sense(Sense::click()));
         if r.clicked() {
             ui.ctx().copy_text(text.clone());
         }
-        r.on_hover_text("Нажми, чтобы скопировать");
+        r.on_hover_text(t("Нажми, чтобы скопировать"));
     }
 
     fn selection_line(&mut self, ui: &mut egui::Ui) {
         let sel = match self.sel.len() {
-            0 => "ничего — нажми на клавишу или зону".to_string(),
+            0 => t("ничего — нажми на клавишу или зону").to_string(),
             1..=6 => self.sel.iter().map(|z| match z {
                 Zone::Key(id) => layout::label(*id),
-                Zone::Emblem => "Эмблема".into(),
-                Zone::Contour => "Световой контур".into(),
+                Zone::Emblem => t("Эмблема").into(),
+                Zone::Contour => t("Световой контур").into(),
             }).collect::<Vec<_>>().join(", "),
-            n => format!("зон: {n}"),
+            n => crate::i18n::tf("зон: {}", &[&n]),
         };
         ui.label(egui::RichText::new(sel).size(14.0).color(TEXT));
     }
@@ -1082,14 +1101,14 @@ impl App {
     fn right_panel(&mut self, ui: &mut egui::Ui) {
         card(ui, |ui| {
             ui.spacing_mut().item_spacing = vec2(8.0, 8.0);
-            caption(ui, "Эффект");
+            caption(ui, t("Эффект"));
             let before_eff = self.st.effect.clone();
             // две вкладки: обычные эффекты и реакция на нажатия; эффекты — плитками
-            let t = ui.input(|i| i.time) as f32;
+            let tm = ui.input(|i| i.time) as f32;
             let full = ui.available_width();
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = 0.0;
-                for (v, n) in [(false, "Подсветка"), (true, "На нажатия")] {
+                for (v, n) in [(false, t("Подсветка")), (true, t("На нажатия"))] {
                     let (r, resp) = ui.allocate_exact_size(vec2(full / 2.0, 30.0), Sense::click());
                     let on = self.eff_tab == v;
                     let cr = if v { CornerRadius { nw: 0, sw: 0, ne: 8, se: 8 } } else { CornerRadius { nw: 8, sw: 8, ne: 0, se: 0 } };
@@ -1125,7 +1144,7 @@ impl App {
                                 0 => self.keys.iter().flatten().nth(i * 7).copied().unwrap_or([0, 240, 240]),
                                 100..=106 => {
                                     // вспышка в середине полоски, повторяется раз в 2 секунды
-                                    let age = (t % 2.0) as f32;
+                                    let age = (tm % 2.0) as f32;
                                     let d = (x - 0.5).abs() * 8.0;
                                     let v = match k {
                                         100 => if d < 0.6 { 1.0 - age / 1.6 } else { 0.0 },
@@ -1141,7 +1160,7 @@ impl App {
                                     };
                                     shade(col, v.max(0.06))
                                 }
-                                _ => effect_preview(&demo, dc, x, 0.5, t),
+                                _ => effect_preview(&demo, dc, x, 0.5, tm),
                             };
                             let seg = Rect::from_min_size(strip.min + vec2(strip.width() * i as f32 / n as f32, 0.0), vec2(strip.width() / n as f32 - 1.5, 3.0));
                             ui.painter().rect_filled(seg, CornerRadius::same(1), rgb(c));
@@ -1154,21 +1173,21 @@ impl App {
             }
             if self.st.effect.kind != 0 {
                 if crate::reactive::is_reactive(self.st.effect.kind) {
-                    ui.label(egui::RichText::new("Клавиши загораются, когда нажимаешь.").size(11.5).color(DIM));
-                    self.autostart_note(ui, "Этот эффект рисует сама программа, а не клавиатура.");
-                    ui.checkbox(&mut self.st.effect.bg, "Под эффектом — свои цвета");
+                    ui.label(egui::RichText::new(t("Клавиши загораются, когда нажимаешь.")).size(11.5).color(DIM));
+                    self.autostart_note(ui, t("Этот эффект рисует сама программа, а не клавиатура."));
+                    ui.checkbox(&mut self.st.effect.bg, t("Под эффектом — свои цвета"));
                 } else {
-                    ui.label(egui::RichText::new("На всю клавиатуру. Свои цвета не пропадут.").size(11.5).color(DIM));
+                    ui.label(egui::RichText::new(t("На всю клавиатуру. Свои цвета не пропадут.")).size(11.5).color(DIM));
                 }
                 ui.horizontal(|ui| {
-                    ui.label(egui::RichText::new("Скорость").color(DIM));
-                    for (v, n) in [(0u8, "Медленно"), (1, "Средне"), (2, "Быстро")] {
+                    ui.label(egui::RichText::new(t("Скорость")).color(DIM));
+                    for (v, n) in [(0u8, t("Медленно")), (1, t("Средне")), (2, t("Быстро"))] {
                         ui.selectable_value(&mut self.st.effect.speed, v, n);
                     }
                 });
                 if self.st.effect.kind == 16 {
                     ui.horizontal(|ui| {
-                        ui.label(egui::RichText::new("Направление").color(DIM));
+                        ui.label(egui::RichText::new(t("Направление")).color(DIM));
                         for (v, n) in [(2u8, "→"), (1, "←"), (4, "↓"), (3, "↑")] {
                             ui.selectable_value(&mut self.st.effect.dir, v, egui::RichText::new(n).size(15.0));
                         }
@@ -1192,7 +1211,7 @@ impl App {
             let show_color = !(self.st.effect.kind != 0 && !effect_has_color(self.st.effect.kind) && self.sel.is_empty());
             if show_color {
             ui.add_space(8.0);
-            caption(ui, if effect_has_color(self.st.effect.kind) && self.sel.is_empty() { "Цвет эффекта" } else { "Цвет" });
+            caption(ui, if effect_has_color(self.st.effect.kind) && self.sel.is_empty() { t("Цвет эффекта") } else { t("Цвет") });
             let before = self.hsv;
             sv_square(ui, &mut self.hsv);
             ui.add_space(4.0);
@@ -1225,7 +1244,7 @@ impl App {
                 }
             });
             ui.add_space(10.0);
-            caption(ui, "Мои цвета");
+            caption(ui, t("Мои цвета"));
             ui.horizontal_wrapped(|ui| {
                 ui.spacing_mut().item_spacing = vec2(7.0, 7.0);
                 let mut remove = None;
@@ -1243,13 +1262,13 @@ impl App {
                         if resp.secondary_clicked() {
                             remove = Some(i);
                         }
-                        resp.on_hover_text("ПКМ — убрать");
+                        resp.on_hover_text(t("ПКМ — убрать"));
                     }
                 }
                 let (r, resp) = ui.allocate_exact_size(vec2(28.0, 28.0), Sense::click());
                 ui.painter().rect_stroke(r, CornerRadius::same(7), Stroke::new(1.0_f32, LINE), StrokeKind::Inside);
                 ui.painter().text(r.center(), Align2::CENTER_CENTER, "+", FontId::proportional(17.0), DIM);
-                if resp.on_hover_text("Добавить текущий цвет").clicked() {
+                if resp.on_hover_text(t("Добавить текущий цвет")).clicked() {
                     self.st.my_colors.push(state::to_hex(cur));
                     self.st.save();
                 }
@@ -1261,7 +1280,7 @@ impl App {
             ui.add_space(10.0);
             let cur_b = self.sel.iter().next().map(|z| self.zone_bri(*z));
             ui.horizontal(|ui| {
-                ui.label(egui::RichText::new("Яркость выбранного").color(DIM));
+                ui.label(egui::RichText::new(t("Яркость выбранного")).color(DIM));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.label(egui::RichText::new(cur_b.map(|b| format!("{b}%")).unwrap_or("—".into())).color(TEXT));
                 });
@@ -1275,15 +1294,15 @@ impl App {
             ui.add_space(10.0);
             } else {
                 ui.add_space(8.0);
-                ui.label(egui::RichText::new("У этого эффекта цвета меняются сами. Нажми на эмблему или контур, чтобы задать их цвет.").size(12.0).color(DIM));
+                ui.label(egui::RichText::new(t("У этого эффекта цвета меняются сами. Нажми на эмблему или контур, чтобы задать их цвет.")).size(12.0).color(DIM));
             }
             ui.add_space(12.0);
             if self.naming {
                 ui.horizontal(|ui| {
-                    let r = ui.add(egui::TextEdit::singleline(&mut self.scheme_name).hint_text("Название набора").desired_width(180.0));
+                    let r = ui.add(egui::TextEdit::singleline(&mut self.scheme_name).hint_text(t("Название набора")).desired_width(180.0));
                     r.request_focus();
-                    if ui.button("Сохранить").clicked() || ui.input(|i| i.key_pressed(egui::Key::Enter)) {
-                        let name = if self.scheme_name.trim().is_empty() { format!("Набор {}", self.st.schemes.len() + 1) } else { self.scheme_name.trim().to_string() };
+                    if ui.button(t("Сохранить")).clicked() || ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                        let name = if self.scheme_name.trim().is_empty() { crate::i18n::tf("Набор {}", &[&(self.st.schemes.len() + 1)]) } else { self.scheme_name.trim().to_string() };
                         self.st.schemes.retain(|s| s.name != name);
                         self.st.schemes.push(Scheme {
                             name,
@@ -1303,9 +1322,9 @@ impl App {
             ui.horizontal(|ui| {
                 let w = (ui.available_width() - 8.0) / 2.0;
                 let mut load = None;
-                egui::ComboBox::from_id_salt("schemes").width(w - 8.0).selected_text("Наборы").show_ui(ui, |ui| {
+                egui::ComboBox::from_id_salt("schemes").width(w - 8.0).selected_text(t("Наборы")).show_ui(ui, |ui| {
                     if self.st.schemes.is_empty() {
-                        ui.label(egui::RichText::new("Пока нет сохранённых наборов").color(DIM));
+                        ui.label(egui::RichText::new(t("Пока нет сохранённых наборов")).color(DIM));
                     }
                     for s in &self.st.schemes {
                         if ui.selectable_label(false, &s.name).clicked() {
@@ -1332,7 +1351,7 @@ impl App {
                     let sel: Vec<Zone> = self.sel.iter().copied().collect();
                     self.select(&sel, false);
                 }
-                let btn = egui::Button::new(egui::RichText::new("Сохранить набор").color(Color32::from_rgb(4, 19, 26)).strong()).fill(ACC).min_size(vec2(w, 34.0)).corner_radius(CornerRadius::same(8));
+                let btn = egui::Button::new(egui::RichText::new(t("Сохранить набор")).color(Color32::from_rgb(4, 19, 26)).strong()).fill(ACC).min_size(vec2(w, 34.0)).corner_radius(CornerRadius::same(8));
                 if ui.add(btn).clicked() {
                     self.naming = true;
                 }
@@ -1652,7 +1671,7 @@ fn rgb_to_hsv(c: Rgb) -> [f32; 3] {
 }
 
 fn effect_name(k: u8) -> &'static str {
-    match k {
+    t(match k {
         100 => "Нажатая клавиша",
         101 => "Круг от нажатия",
         102 => "Крест",
@@ -1665,7 +1684,7 @@ fn effect_name(k: u8) -> &'static str {
         16 => "Радужная волна",
         17 => "Сканер",
         _ => "Свои цвета",
-    }
+    })
 }
 
 fn effect_has_color(k: u8) -> bool {

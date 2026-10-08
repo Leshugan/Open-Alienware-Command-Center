@@ -37,6 +37,7 @@ pub enum Msg {
     Tray(bool),
     Press(u8),
     Debug(bool),
+    Lang(u8),
     /// окно закрылось, а фон не нужен (нет трея и автозапуска) — завершиться
     Quit,
 }
